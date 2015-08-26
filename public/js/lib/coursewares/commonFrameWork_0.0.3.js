@@ -1,78 +1,108 @@
-var isInitRun = false;
-var editor;
-var widgets = [];
-editor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
-    lineNumbers: true,
-    mode: "text",
-    theme: 'monokai',
-    runnable: true,
-    matchBrackets: true,
-    autoCloseBrackets: true,
-    scrollbarStyle: 'null',
-    lineWrapping: true,
-    gutters: ["CodeMirror-lint-markers"],
-    onKeyEvent: doLinting
-});
-
-var myCodeMirror = editor;
-
-var codeStorage = {
+// codeStorage
+codeStorageFactory = (function($, localStorage) {
+  var CodeStorageProps = {
     version: 0.01,
     keyVersion:"saveVersion",
     keyValue: null,//where the value of the editor is saved
     updateWait: 2000,// 2 seconds
     updateTimeoutId: null,
     eventArray: []//for firing saves
-};
-codeStorage.hasSaved = function(){
-    return ( updateTimeoutId === null );
-};
-codeStorage.onSave = function(func){
-    codeStorage.eventArray.push(func);
-};
-codeStorage.setSaveKey = function(key){
-    codeStorage.keyValue = key + 'Val';
-};
-codeStorage.getEditorValue = function(){
-    return ('' + localStorage.getItem(codeStorage.keyValue));
-};
+  };
 
-codeStorage.isAlive = function() {
-    var val = this.getEditorValue();
-    return val !== 'null' &&
+  var CodeStorage = {
+    hasSaved: function() {
+      return updateTimeoutId === null;
+    },
+
+    onSave: function(func) {
+      this.eventArray.push(func);
+    },
+
+    setSaveKey: function(key) {
+      this.keyValue = key + 'Val';
+    },
+
+    getStoredValue: function() {
+      return '' + localStorage.getItem(this.keyValue);
+    },
+
+    setEditor: function(editor) {
+      this.editor = editor;
+    },
+
+    isAlive: function() {
+      var val = this.getStoredValue();
+      return val !== 'null' &&
         val !== 'undefined' &&
         (val && val.length > 0);
-};
-codeStorage.updateStorage = function(){
-    if(typeof(Storage) !== undefined) {
-        var value = editor.getValue();
-        localStorage.setItem(codeStorage.keyValue, value);
-    } else {
-        var debugging = false;
-        if( debugging ){
-            console.log('no web storage');
-        }
-    }
-    codeStorage.updateTimeoutId = null;
-    codeStorage.eventArray.forEach(function(func){
+    },
+
+    updateStorage: function() {
+      if (typeof localStorage !== 'undefined') {
+        var value = this.editor.getValue();
+        localStorage.setItem(this.keyValue, value);
+      } else {
+        console.log('no web storage');
+      }
+      this.updateTimeoutId = null;
+      this.eventArray.forEach(function(func){
         func();
-    });
-};
-(function(){
-    var savedVersion = localStorage.getItem('saveVersion');
-    if( savedVersion === null ){
-        localStorage.setItem(codeStorage.keyVersion, codeStorage.version);//just write current version
-    }else{
-        if( savedVersion !== codeStorage.version ){
-            //Update version
-        }
+      });
     }
-})();
-codeStorage.setSaveKey(challenge_Name);
-editor.on('keyup', function(){
-    window.clearTimeout(codeStorage.updateTimeoutId);
-    codeStorage.updateTimeoutId = window.setTimeout(codeStorage.updateStorage, codeStorage.updateWait);
+  };
+
+  function codeStorageFactory(editor, challengeName) {
+    var codeStorage = Object.create(CodeStorage);
+    $.extend(codeStorage, CodeStorageProps);
+    codeStorage.setEditor(editor);
+    codeStorage.setSaveKey(challengeName);
+    return codeStorage;
+  }
+
+  var savedVersion = localStorage.getItem(CodeStorageProps.keyVersion);
+  if (savedVersion === null) {
+    localStorage.setItem(
+      CodeStorageProps.keyVersion,
+      CodeStorageProps.version
+    );
+  }else{
+    if (savedVersion !== CodeStorageProps.version) {
+      //TODO: Update version
+    }
+  }
+
+  return codeStorageFactory;
+}($, localStorage));
+// end code storage
+
+var isInitRun = false;
+var editor;
+var widgets = [];
+
+editor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
+    lineNumbers: true,
+    mode: 'text',
+    theme: 'monokai',
+    runnable: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    scrollbarStyle: 'null',
+    lineWrapping: true,
+    gutters: ['CodeMirror-lint-markers']
 });
+
+var codeStorage = codeStorageFactory(editor, challenge_Name);
+
+var myCodeMirror = editor;
+
+editor.on('keyup', function(){
+  clearTimeout(codeStorage.updateTimeoutId);
+  codeStorage.updateTimeoutId = setTimeout(
+    codeStorage.updateStorage,
+    codeStorage.updateWait
+  );
+});
+
 var editorValue;
 var challengeSeed = challengeSeed || null;
 var tests = tests || [];
@@ -82,29 +112,6 @@ var allSeeds = '';
         allSeeds += elem + '\n';
     });
 })();
-
-function doLinting() {
-    editor.operation(function() {
-        for (var i = 0; i < widgets.length; ++i)
-            editor.removeLineWidget(widgets[i]);
-        widgets.length = 0;
-        JSHINT(editor.getValue());
-        for (var i = 0; i < JSHINT.errors.length; ++i) {
-            var err = JSHINT.errors[i];
-            if (!err) continue;
-            var msg = document.createElement("div");
-            var icon = msg.appendChild(document.createElement("span"));
-            icon.innerHTML = "!!";
-            icon.className = "lint-error-icon";
-            msg.appendChild(document.createTextNode(err.reason));
-            msg.className = "lint-error";
-            widgets.push(editor.addLineWidget(err.line - 1, msg, {
-                coverGutter: false,
-                noHScroll: true
-            }));
-        }
-    });
-}
 
 /*var defaultKeymap = {
  'Cmd-E': 'emmet.expand_abbreviation',
@@ -264,16 +271,14 @@ if(typeof prodOrDev !== 'undefined') {
 var testResults = [];
 var postSuccess = function(data) {
     var testDoc = document.createElement("div");
-    $(testDoc)
-        .html("<div class='row'><div class='col-xs-2 text-center'><i class='ion-checkmark-circled big-success-icon'></i></div><div class='col-xs-10 test-output test-vertical-center wrappable'>" + JSON.parse(data) + "</div>");
+    $(testDoc).html("<div class='row'><div class='col-xs-2 text-center'><i class='ion-checkmark-circled big-success-icon'></i></div><div class='col-xs-10 test-output test-vertical-center wrappable'>" + JSON.parse(data) + "</div>");
     $('#testSuite').append(testDoc);
     testSuccess();
 };
 
 var postError = function(data) {
     var testDoc = document.createElement("div");
-    $(testDoc)
-        .html("<div class='row'><div class='col-xs-2 text-center'><i class='ion-close-circled big-error-icon'></i></div><div class='col-xs-10 test-vertical-center test-output wrappable'>" + JSON.parse(data) + "</div>");
+    $(testDoc).html("<div class='row'><div class='col-xs-2 text-center'><i class='ion-close-circled big-error-icon'></i></div><div class='col-xs-10 test-vertical-center test-output wrappable'>" + JSON.parse(data) + "</div>");
     $('#testSuite').append(testDoc);
 };
 var goodTests = 0;
@@ -569,7 +574,7 @@ $('#submitButton').on('click', function() {
 $(document).ready(function(){
     var $preview = $('#preview');
     isInitRun = true;
-    editorValue = (codeStorage.isAlive())? codeStorage.getEditorValue() : allSeeds;
+    editorValue = (codeStorage.isAlive())? codeStorage.getStoredValue() : allSeeds;
     myCodeMirror.setValue(editorValue.replace(/fccss/gi, '<script>').replace(/fcces/gi, "</script>"));
     if(typeof $preview.html() !== 'undefined') {
         $preview.load(function(){
