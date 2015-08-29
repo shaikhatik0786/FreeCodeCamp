@@ -14,7 +14,8 @@ module.exports = function(app) {
 
   router.get('/privacy', function(req, res) {
     res.redirect(
-      301, "//github.com/FreeCodeCamp/freecodecamp/wiki/Free-Code-Camp's-Privacy-Policy"
+      301,
+      "//github.com/FreeCodeCamp/freecodecamp/wiki/Free-Code-Camp's-Privacy-Policy"
     );
   });
 
@@ -23,7 +24,7 @@ module.exports = function(app) {
   });
 
   router.get('/field-guide/*', function(req, res) {
-    res.redirect(302, '//github.com/freecodecamp/freecodecamp/wiki')
+    res.redirect(302, '//github.com/freecodecamp/freecodecamp/wiki');
   });
 
   router.get('/about', function(req, res) {

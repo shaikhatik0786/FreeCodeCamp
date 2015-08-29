@@ -96,10 +96,10 @@ module.exports = function(app) {
             });
         },
 
-        challenges: function (callback) {
+        challenges: function(callback) {
           Challenge.find(
             { fields: { name: true } },
-            function (err, challenges) {
+            function(err, challenges) {
               if (err) {
                 debug('Challenge err: ', err);
                 callback(err);
@@ -116,10 +116,10 @@ module.exports = function(app) {
               }
             });
         },
-        stories: function (callback) {
+        stories: function(callback) {
           Story.find(
             { field: { link: true } },
-            function (err, stories) {
+            function(err, stories) {
               if (err) {
                 debug('Story err: ', err);
                 callback(err);
@@ -137,7 +137,7 @@ module.exports = function(app) {
             }
           );
         },
-        nonprofits: function (callback) {
+        nonprofits: function(callback) {
           Nonprofit.find(
             { field: { name: true } },
             function(err, nonprofits) {
@@ -197,12 +197,14 @@ module.exports = function(app) {
     });
   }
 
+  /*
   function catPhotoSubmit(req, res) {
     res.send(
       'Success! You have submitted your cat photo. Return to your website ' +
       'by typing any letter into your code editor.'
     );
   }
+  */
 
   function sponsors(req, res) {
     res.render('sponsors/sponsors', {
@@ -247,7 +249,7 @@ module.exports = function(app) {
           return next(err);
         }
         user.sendMonthlyEmail = false;
-        user.save(function () {
+        user.save(function() {
           if (err) {
             return next(err);
           }
@@ -302,7 +304,7 @@ module.exports = function(app) {
             secrets.github.clientSecret
           ].join(''),
           githubHeaders,
-          function (err, status2, issues) {
+          function(err, status2, issues) {
             if (err) { return next(err); }
             issues = ((pulls === parseInt(pulls, 10)) && issues) ?
             Object.keys(JSON.parse(issues)).length - pulls :
@@ -336,7 +338,7 @@ module.exports = function(app) {
       'https://www.googleapis.com/blogger/v3/blogs/2421288658305323950/' +
         'posts?key=' +
       secrets.blogger.key,
-      function (err, status, blog) {
+      function(err, status, blog) {
         if (err) { return next(err); }
 
         blog = (status && status.statusCode === 200) ?
